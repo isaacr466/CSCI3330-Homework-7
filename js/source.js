@@ -1,201 +1,178 @@
 $(function () {
-    // *********************************************************************
-    // Feel free to modify/remove the JS objects below.
-    // *********************************************************************
 
-    let revenueAmt = "$35,800";
-    let customerNum = "1,284";
-    let ordersAmt = "342";
-    let issuesAmt = "12";
-    let username = "UTRGV Vaqueros";
-    let notifAmt = 3;
+    let currentPage = 1;
+    let totalPages = 1;
 
-    const customers = [
-        {
-            "name": "Alice Johnson",
-            "email": "alice@example.com",
-            "status": "Active",
-            "joined": "09/10/2026"
-        },
-        {
-            "name": "Robert Smith",
-            "email": "robert@example.com",
-            "status": "Pending",
-            "joined": "09/12/2026"
-        },
-        {
-            "name": "Maria Garcia",
-            "email": "maria@example.com",
-            "status": "Active",
-            "joined": "09/15/2026"
-        }
-    ];
+    // Format currency
+    function formatMoney(amount) {
+        return Number(amount).toLocaleString("en-US", {
+            style: "currency",
+            currency: "USD"
+        });
+    }
 
-    const sales = [
-        {
-            "product": "Product A",
-            "quantity": "124",
-            "revenue": "$12,400"
-        },
-        {
-            "product": "Product B",
-            "quantity": "98",
-            "revenue": "$9,800"
-        },
-        {
-            "product": "Product C",
-            "quantity": "75",
-            "revenue": "$7,500"
-        },
-    ];
+    // Format customer date
+    function formatDate(date) {
+        if (!date) return "";
 
-    const activities = [
-        {
-            "message" : "New customer registered"
-        },
-        {
-            "message" : "Order #10482 completed"
-        },
-        {
-            "message" : "Payment received"
-        },
-        {
-            "message" : "Support ticket created"
-        }
-    ];
+        const parts = date.substring(0, 10).split("-");
 
-    const messages = [
-        {
-            "messsage" : "All systems operational"
-        },
-        {
-            "messsage" : "All settings loaded for this system"
-        }
-    ];
+        return `${parts[1]}/${parts[2]}/${parts[0]}`;
+    }
 
-    const notifications = [
-        {
-            "messsage": "A new shipment is expected to arrive on Sep 30, 2026"
-        },
-        {
-            "messsage": "There are 12 outstanding issues with last week's orders"
-        },
-        {
-            "messsage": "Three new customers joined our platform in the last month"
-        },
-    ];
+    // Load dashboard data
+    async function loadDashboard(page = 1) {
+        try {
+            const response = await fetch(
+                `/api/dashboard?page=${page}`
+            );
 
-    const tasks = [
-       {
-            "messsage": "Review orders"
-        },
-        {
-            "messsage": "Contact customer"
-        },
-        {
-            "messsage": "Generate report"
-        },
-    ]
-
-    // There are 13 requirements to implement. 
-    const userNameObj = $("#username");
-    userNameObj.append(`${username}`);
-
-    const cardRevenue = $(".revenue-amt");   // this must select the class .revenue-amt, which will affect two elements. So count this 2 times.
-    cardRevenue.append(`${revenueAmt}`);
-
-    const cardCustomers = $("#customer-num");
-    cardCustomers.append(`${customerNum}`);
-
-    const cardOrders = $("#orders-amt");
-    cardOrders.append(`${ordersAmt}`);
-
-    const cardIssues = $("#issues-amt");
-    cardIssues.append(`${issuesAmt}`);
-
-    const notificationNumber = $("#notification-num");
-    notificationNumber.append(`${notifAmt}`);
-
-    const tableBody = $("#customerTableBody");
-
-    customers.forEach(customer => {
-        const row = $("<tr>");
-
-        var statusClass;
-            if (customer.status.toLowerCase() === "active"){
-                statusClass = "status-active";
-            } else {
-                statusClass = "status-pending";
+            if (!response.ok) {
+                throw new Error("Failed to load dashboard data");
             }
-        row.html(`
-            <td>${customer.name}</td>
-            <td>${customer.email}</td>
-            <td>
-                <span class="status ${statusClass}">
-                    ${customer.status}
-                </span>
-            </td>
-            <td>${customer.joined}</td>
-        `);
 
-        tableBody.append(row);
-    });
+            const data = await response.json();
 
-   
-    const salesTableBody = $("#salesTableBody");
+            currentPage = data.page;
+            totalPages = data.totalPages;
 
-    sales.forEach(sale => {
-        const row = $("<tr>");
+            // Dashboard statistics
+            $("#username").text("UTRGV Vaqueros");
 
-        row.html(`
-            <td>${sale.product}</td>
-            <td>${sale.quantity}</td>
-            <td>${sale.revenue}</td>
-        `);
+            $(".revenue-amt").text(
+                formatMoney(data.revenue)
+            );
 
-        salesTableBody.append(row);
-    });
+            $("#customer-num").text(
+                data.customerCount.toLocaleString()
+            );
 
-    const activityList = $("#activity-list");
+            $("#orders-amt").text(
+                data.orders.toLocaleString()
+            );
 
-    activities.forEach(activity => {
-        const li = $("<li>");
-        li.html(`${activity.message}`);
-        activityList.append(li);
-    });
+            $("#issues-amt").text(data.issueCount);
 
- 
-    const systemStatusList = $("#system-status-list");
+            $("#notification-num").text(
+                data.notificationCount
+            );
 
-    messages.forEach(msg => {
-        const li = $("<li>");
-        li.html(`${msg.messsage}`);
-        systemStatusList.append(li);
-    });
+            // Display customers
+            const customerTable = $("#customerTableBody");
+            customerTable.empty();
 
+            data.customers.forEach(customer => {
+                const row = $("<tr>");
 
-    const notificationsList = $("#notifications-list");
+                const status = customer.status || "";
 
-    notifications.forEach(notif => {
-        const li = $("<li>");
-        li.html(`${notif.messsage}`);
-        notificationsList.append(li);
-    });
+                const statusClass =
+                    status.toLowerCase() === "active"
+                        ? "status-active"
+                        : "status-pending";
 
+                $("<td>")
+                    .text(customer.name)
+                    .appendTo(row);
 
-    const tasksList = $("#tasks-list");
+                $("<td>")
+                    .text(customer.email)
+                    .appendTo(row);
 
-    tasks.forEach(task => {
-        const li = $("<li>");
-        li.html(`${task.messsage}`);
-        tasksList.append(li);
-    });
+                const statusCell = $("<td>");
 
+                $("<span>")
+                    .addClass(`status ${statusClass}`)
+                    .text(status)
+                    .appendTo(statusCell);
 
-    // All six jQuery UI functions
+                row.append(statusCell);
 
+                $("<td>")
+                    .text(formatDate(customer.datejoined))
+                    .appendTo(row);
+
+                customerTable.append(row);
+            });
+
+            // Display sales
+            const salesTable = $("#salesTableBody");
+            salesTable.empty();
+
+            data.sales.forEach(sale => {
+                const row = $("<tr>");
+
+                $("<td>")
+                    .text(sale.name || "Unknown")
+                    .appendTo(row);
+
+                $("<td>")
+                    .text(sale.quantity)
+                    .appendTo(row);
+
+                $("<td>")
+                    .text(formatMoney(sale.saleamount))
+                    .appendTo(row);
+
+                salesTable.append(row);
+            });
+
+            // Display issues
+            const issuesList = $("#system-status-list");
+            issuesList.empty();
+
+            data.issues.forEach(issue => {
+                $("<li>")
+                    .text(issue.description)
+                    .appendTo(issuesList);
+            });
+
+            // Display notifications
+            const notificationsList = $("#notifications-list");
+            notificationsList.empty();
+
+            data.notifications.forEach(notification => {
+                $("<li>")
+                    .text(notification.description)
+                    .appendTo(notificationsList);
+            });
+
+            // Display tasks
+            const tasksList = $("#tasks-list");
+            tasksList.empty();
+
+            data.tasks.forEach(task => {
+                $("<li>")
+                    .text(task.description)
+                    .appendTo(tasksList);
+            });
+
+            // Update pagination
+            $("#pageInfo").text(
+                `Page ${currentPage} of ${totalPages}`
+            );
+
+            $("#prevPage").button(
+                "option",
+                "disabled",
+                currentPage <= 1
+            );
+
+            $("#nextPage").button(
+                "option",
+                "disabled",
+                currentPage >= totalPages
+            );
+
+        } catch (error) {
+            console.error("Dashboard error:", error);
+            alert("Unable to load dashboard data.");
+        }
+    }
+
+    // Initialize jQuery UI
     $("button").button();
-       
+
     $("#dashboardTabs").tabs();
 
     $("#customerDate").datepicker();
@@ -205,42 +182,51 @@ $(function () {
         heightStyle: "content"
     });
 
+    // Customer dialog
     $("#customerDialog").dialog({
         autoOpen: false,
         modal: true,
         width: 450,
         buttons: {
             "Create Customer": function () {
-                var name = $("#customerName").val();
-                var email = $("#customerEmail").val();
+                const name = $("#customerName").val();
+                const email = $("#customerEmail").val();
+
                 if (!name || !email) {
-                    alert(
-                        "Please enter a name and email."
-                    );
+                    alert("Please enter a name and email.");
                     return;
                 }
 
                 alert("Customer created: " + name);
                 $(this).dialog("close");
             },
+
             "Cancel": function () {
                 $(this).dialog("close");
             }
         }
-
     });
 
+    // Open customer dialog
+    $("#newCustomerButton").on("click", function () {
+        $("#customerDialog").dialog("open");
+    });
 
-    $("#newCustomerButton").on(
-        "click",
-        function () {
-            $("#customerDialog").dialog("open");
+    // Previous customer page
+    $("#prevPage").on("click", function () {
+        if (currentPage > 1) {
+            loadDashboard(currentPage - 1);
         }
-    );
-
-
-
-       
-
-
     });
+
+    // Next customer page
+    $("#nextPage").on("click", function () {
+        if (currentPage < totalPages) {
+            loadDashboard(currentPage + 1);
+        }
+    });
+
+    // Load first page
+    loadDashboard(1);
+
+});
